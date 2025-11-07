@@ -57,6 +57,12 @@ export default function MePage() {
             <h1 className="text-3xl font-bold text-gray-900">Welcome</h1>
             <div className="flex gap-3">
               <button
+                onClick={() => router.push("/articles")}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
+              >
+                Articles
+              </button>
+              <button
                 onClick={loadUser}
                 disabled={loading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition disabled:cursor-not-allowed"
