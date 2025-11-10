@@ -7,7 +7,10 @@ const API_BASE = process.env.DRUPAL_API_BASE as string;
 async function proxyOnce(req: NextRequest, url: string, accessToken?: string) {
   const headers = new Headers(req.headers);
   headers.delete("host");
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+    console.log(`[proxy] Setting Authorization header with token: ${accessToken.substring(0, 50)}...`);
+  }
 
   const init: RequestInit = {
     method: req.method,
