@@ -85,6 +85,12 @@ async function handle(req: NextRequest, pathSegments: string[]) {
   const text = new TextDecoder().decode(buffer);
   console.log(`[proxy] response status: ${res.status}, body length: ${buffer.byteLength}, full text: ${text}`);
   
+  // Log detailed error info for debugging
+  if (res.status >= 400) {
+    console.log(`[proxy] ERROR - URL: ${targetUrl}, Method: ${req.method}, Status: ${res.status}`);
+    console.log(`[proxy] Response body:`, text);
+  }
+  
   // Set correct Content-Length for the buffered response
   proxyHeaders.set("Content-Length", buffer.byteLength.toString());
   

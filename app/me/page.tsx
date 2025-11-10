@@ -4,11 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type UserInfo = Record<string, any>;
+type NodeType = "role_1" | "role_2";
 
 export default function MePage() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nodeTitle, setNodeTitle] = useState("");
+  const [nodeBody, setNodeBody] = useState("");
+  const [selectedNodeType, setSelectedNodeType] = useState<NodeType>("role_1");
+  const [creatingNode, setCreatingNode] = useState(false);
+  const [nodeError, setNodeError] = useState<string | null>(null);
+  const [nodeSuccess, setNodeSuccess] = useState<string | null>(null);
   const router = useRouter();
 
   async function loadUser() {
@@ -42,6 +49,75 @@ export default function MePage() {
   async function onLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
+  }
+
+  async function createNode() {
+    setNodeError(null);
+    setNodeSuccess(null);
+    setCreatingNode(true);
+
+    try {
+      if (!nodeTitle.trim()) {
+        setNodeError("Title is required");
+        setCreatingNode(false);
+        return;
+      }
+
+      const payload = {
+        data: {
+          type: `node--${selectedNodeType}`,
+          attributes: {
+            title: nodeTitle,
+            body: {
+              value: nodeBody || "",
+              format: "basic_html",
+            },
+          },
+        },
+      };
+
+      const bodyString = JSON.stringify(payload);
+      
+      console.log("=== NODE CREATION REQUEST ===");
+      console.log("URL:", `/api/drupal/jsonapi/node/${selectedNodeType}`);
+      console.log("Method: POST");
+      console.log("Headers:", {
+        "Content-Type": "application/vnd.api+json",
+        Accept: "application/vnd.api+json",
+      });
+      console.log("Note: Bearer token is sent automatically via httpOnly cookie (credentials: 'same-origin')");
+      console.log("Body:", bodyString);
+      console.log("Parsed Body:", payload);
+      console.log("============================");
+
+      const res = await fetch(`/api/drupal/jsonapi/node/${selectedNodeType}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/vnd.api+json",
+          Accept: "application/vnd.api+json",
+        },
+        credentials: "same-origin",
+        body: bodyString,
+      });
+
+      const responseData = await res.json();
+
+      if (!res.ok) {
+        const errorMsg = responseData?.errors?.[0]?.detail || `Failed to create node (${res.status})`;
+        setNodeError(errorMsg);
+        console.error("Node creation error:", responseData);
+      } else {
+        setNodeSuccess(`Node created successfully! ID: ${responseData.data?.id}`);
+        setNodeTitle("");
+        setNodeBody("");
+        setTimeout(() => setNodeSuccess(null), 5000);
+      }
+    } catch (e: any) {
+      console.error("createNode error:", e);
+      setNodeError(e?.message || "Failed to create node");
+    } finally {
+      setCreatingNode(false);
+    }
   }
 
   useEffect(() => {
@@ -145,6 +221,99 @@ export default function MePage() {
             </div>
           )}
         </div>
+
+        {/* Node Creation Panel */}
+        {user && (
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Node</h2>
+
+            {nodeError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+                <p className="text-sm text-red-700">{nodeError}</p>
+              </div>
+            )}
+
+            {nodeSuccess && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+                <p className="text-sm text-green-700">{nodeSuccess}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Node Type Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Node Type
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="nodeType"
+                      value="role_1"
+                      checked={selectedNodeType === "role_1"}
+                      onChange={(e) => setSelectedNodeType(e.target.value as NodeType)}
+                      disabled={creatingNode}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="ml-2 text-gray-700">Role 1</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="nodeType"
+                      value="role_2"
+                      checked={selectedNodeType === "role_2"}
+                      onChange={(e) => setSelectedNodeType(e.target.value as NodeType)}
+                      disabled={creatingNode}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="ml-2 text-gray-700">Role 2</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={nodeTitle}
+                  onChange={(e) => setNodeTitle(e.target.value)}
+                  disabled={creatingNode}
+                  placeholder="Enter node title"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Body Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Body
+                </label>
+                <textarea
+                  value={nodeBody}
+                  onChange={(e) => setNodeBody(e.target.value)}
+                  disabled={creatingNode}
+                  placeholder="Enter node body content"
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                onClick={createNode}
+                disabled={creatingNode || !nodeTitle.trim()}
+                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition disabled:cursor-not-allowed"
+              >
+                {creatingNode ? "Creating..." : "Create Node"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Raw JSON (optional) */}
         {user && (
